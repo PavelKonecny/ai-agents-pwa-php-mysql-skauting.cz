@@ -1,0 +1,63 @@
+# Nasazení na hosting skauting.cz: po každém pushi do main se aplikace otestuje, sestaví
+# a nahraje přes FTP. Nahrávají se jen změněné soubory; api/config.php na serveru zůstává nedotčený.
+#
+# Jednorázové nastavení (Settings → Secrets and variables → Actions):
+#   Secrets:   FTP_SERVER      např. ftp.skauting.cz (od správce hostingu)
+#              FTP_USERNAME    FTP uživatel aplikace
+#              FTP_PASSWORD    FTP heslo
+#   Variables: FTP_DIR         složka webu na serveru, např. /nazev-aplikace/   (musí končit lomítkem)
+#              FTP_PROTOCOL    ftps (výchozí, šifrované) nebo ftp, pokud hosting FTPS neumí
+name: Nasazení
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # ruční spuštění z karty Actions
+
+concurrency:
+  group: nasazeni
+  cancel-in-progress: false
+
+jobs:
+  nasadit:
+    runs-on: ubuntu-latest
+    env:
+      # secrets nejdou použít přímo v podmínce kroku – proto přes proměnnou
+      MA_FTP: ${{ secrets.FTP_SERVER != '' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # kvůli číslu verze (počet commitů)
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo_sqlite, pdo_mysql, mbstring, soap
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run dist
+
+      - name: FTP není nastavené – nahrávání přeskočeno
+        if: env.MA_FTP != 'true'
+        run: echo "::notice::Nasazení přeskočeno – v Settings → Secrets and variables → Actions chybí FTP_SERVER (viz .claude/skills/skaut-app/reference/infrastruktura.md)."
+
+      - name: Nahrát na hosting (FTP)
+        if: env.MA_FTP == 'true'
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ${{ vars.FTP_PROTOCOL || 'ftps' }}
+          local-dir: ./dist-nahrat/
+          server-dir: ${{ vars.FTP_DIR }}
+          # na serveru nikdy nepřepsat ani nesmazat konfiguraci a data
+          exclude: |
+            **/.git*
+            **/.git*/**
+            api/config.php
+            api/data/*.sqlite*

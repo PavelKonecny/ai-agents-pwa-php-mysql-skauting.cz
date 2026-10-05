@@ -1,0 +1,3 @@
+# unixové konce řádků (hosting je Linux; .htaccess, PHP, skripty)
+* text=auto eol=lf
+*.svg text eol=lf

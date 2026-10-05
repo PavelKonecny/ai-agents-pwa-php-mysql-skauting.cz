@@ -1,0 +1,67 @@
+/* Vzhled podle jednotného vizuálního stylu (JVS) Junáka: tmavě modrá, skautská modrá, žlutá.
+   Písma JVS (TheMix, SKAUT) nejsou součástí šablony – viz .claude/skills/skaut-app/reference/vzhled.md. */
+
+:root {
+  --modra: #077ea5;        /* skautská modrá – tlačítka, odkazy */
+  --modra-tmava: #002039;  /* tmavě modrá – lišta */
+  --zluta: #ffd23f;
+  --ok: #2e8b57;
+  --chyba: #c0392b;
+  --pozadi: #f4f7f9;
+  --plocha: #ffffff;
+  --plocha-2: #eef3f6;
+  --text: #14212b;
+  --tlumene: #5b6b77;
+  --okraj: #d9e2e8;
+  --polomer: 14px;
+  --pismo: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --modra: #4cb3d6; --pozadi: #0b1620; --plocha: #13212d; --plocha-2: #1a2b39;
+    --text: #e7eef3; --tlumene: #9db0bd; --okraj: #34495a; --ok: #5cc98a; --chyba: #ff7b6b;
+    color-scheme: dark;
+  }
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--pozadi); color: var(--text); font: 16px/1.45 var(--pismo); }
+h1, h2 { margin: 0; line-height: 1.2; }
+h1 { font-size: 1.5rem; }
+h2 { font-size: 1.1rem; }
+a { color: var(--modra); }
+
+.aplikace { min-height: 100dvh; padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
+.lista { position: sticky; top: 0; z-index: 5; display: flex; align-items: baseline; gap: 10px; padding: 12px 16px; background: var(--modra-tmava); color: #fff; }
+.lista .maly { opacity: 0.8; margin-left: auto; }
+.obsah { max-width: 720px; margin: 0 auto; padding: 16px; }
+.menu { position: fixed; left: 0; right: 0; bottom: 0; display: flex; background: var(--modra-tmava); padding-bottom: env(safe-area-inset-bottom); }
+.menu a { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 0; color: #ffffffb3; text-decoration: none; font-size: 0.75rem; }
+.menu a.aktivni { color: #fff; font-weight: 700; box-shadow: inset 0 3px 0 var(--zluta); }
+
+.stack { display: flex; flex-direction: column; gap: 12px; }
+.radek { display: flex; align-items: center; gap: 10px; }
+.zalomit { flex-wrap: wrap; }
+.roste { flex: 1; min-width: 0; }
+.maly { font-size: 0.85rem; }
+.tlumene { color: var(--tlumene); }
+.stred { text-align: center; }
+
+.karta { background: var(--plocha); border: 1px solid var(--okraj); border-radius: var(--polomer); padding: 14px; }
+.karta.zvyraznena { border-color: var(--modra); }
+.pole { width: 100%; min-height: 44px; padding: 10px 12px; font: inherit; color: var(--text); background: var(--plocha-2); border: 1px solid var(--okraj); border-radius: 10px; }
+.pole.maly { width: auto; min-height: 36px; padding: 4px 8px; }
+.pole:focus { outline: 2px solid var(--modra); border-color: transparent; }
+label.maly { display: flex; flex-direction: column; gap: 4px; color: var(--tlumene); font-weight: 600; }
+
+.tlacitko { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 10px 16px; border: 1px solid transparent; border-radius: 12px; background: var(--modra); color: #fff; font: inherit; font-weight: 700; text-decoration: none; cursor: pointer; }
+.tlacitko:disabled { opacity: 0.5; cursor: default; }
+.tlacitko.druhotne { background: var(--plocha); color: var(--modra); border-color: var(--okraj); }
+.tlacitko.text { background: transparent; color: var(--modra); padding: 8px 10px; }
+.tlacitko.chyba { color: var(--chyba); }
+
+.stitek { font-size: 0.75rem; padding: 2px 8px; border-radius: 999px; background: var(--plocha-2); color: var(--tlumene); }
+.odkaz { word-break: break-all; font-size: 0.85rem; background: var(--plocha-2); padding: 8px 10px; border-radius: 8px; }
+.hlaska { position: fixed; left: 16px; right: 16px; bottom: calc(76px + env(safe-area-inset-bottom)); z-index: 20; max-width: 560px; margin: 0 auto; padding: 12px 14px; border-radius: 12px; background: var(--modra-tmava); color: #fff; }
+.hlaska.chyba { background: var(--chyba); }

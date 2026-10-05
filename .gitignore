@@ -1,0 +1,10 @@
+node_modules
+dist
+dist-nahrat
+*.local
+.DS_Store
+
+# konfigurace s hesly a lokální data – nikdy do gitu
+api/config.php
+api/data/*.sqlite*
+.ftp-deploy-sync-state.json

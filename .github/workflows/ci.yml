@@ -1,0 +1,27 @@
+# Kontrola každé změny: typy, testy API (PHP + SQLite) a sestavení aplikace.
+name: Kontrola
+
+on:
+  pull_request:
+  push:
+    branches-ignore: [main] # main kontroluje i nasazuje workflow „Nasazení“
+
+jobs:
+  kontrola:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # kvůli číslu verze (počet commitů)
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo_sqlite, pdo_mysql, mbstring, soap
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build

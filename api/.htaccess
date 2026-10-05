@@ -1,0 +1,10 @@
+# API – do knihoven, konfigurace a dat nikdo zvenku nesmí.
+Options -Indexes
+<FilesMatch "^(config\.php|config\.example\.php)$">
+  Require all denied
+</FilesMatch>
+<FilesMatch "\.(sqlite|sqlite-wal|sqlite-shm|log)$">
+  Require all denied
+</FilesMatch>
+RedirectMatch 404 ^.*/api/(lib|data)(/.*)?$
+DirectoryIndex index.php

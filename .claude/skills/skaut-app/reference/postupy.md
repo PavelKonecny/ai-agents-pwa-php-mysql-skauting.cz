@@ -102,26 +102,36 @@ import { useEffect, useState } from 'preact/hooks';
 import type { Radek } from '../../shared/schema';
 import { api } from '../lib/api';
 import { ukaz } from '../lib/stav';
+import { Empty } from '../components/ui';
 
 export function Akce() {
   const [list, setList] = useState<Radek[] | null>(null);
   const nacti = () => api<Radek[]>('akce.list').then(setList).catch((e) => ukaz(e.message, true));
   useEffect(() => { void nacti(); }, []);
-  if (!list) return <p class="tlumene">Načítám…</p>;
+  if (!list) return <p class="muted">Načítám…</p>;
   return (
     <div class="stack">
       <h1>Akce</h1>
-      {list.map((a) => <div class="karta"><b>{a.nazev}</b> <span class="maly tlumene">{a.datum}</span></div>)}
+      {list.length === 0 ? <Empty icon="calendar">Zatím žádné akce.</Empty> : (
+        <div class="list">
+          {list.map((a) => (
+            <a class="item" href={`#/akce/${a.id}`}>
+              <div class="item-text"><b>{a.nazev}</b><div class="small muted">{a.datum}</div></div>
+            </a>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 ```
 
-`src/app.tsx`: přidej do `OBRAZOVKY` (`akce: Akce`) a do `NAV` (`{ cesta: 'akce', nazev: 'Akce', ikona: '🏕️' }`).
+`src/app.tsx`: přidej do `OBRAZOVKY` (`akce: Akce`) a do `NAV`
+(`{ cesta: 'akce', nazev: 'Akce', ikona: 'calendar', cesty: ['akce'] }` – ikona je název z `Icon` v `src/components/ui.tsx`).
 Obrazovku jen pro správce označ `jenSpravce: true` – **a oprávnění stejně hlídej na serveru**.
 
-Styly: hotové třídy v `src/styles.css` (`karta`, `stack`, `radek`, `pole`, `tlacitko` (+ `druhotne`, `text`),
-`maly`, `tlumene`, `stitek`). Nové styly přidávej tam, s proměnnými barev (kvůli tmavému režimu).
+Vzhled: používej hotové třídy a komponenty – přehled je v `reference/vzhled.md` (`card`, `item`, `btn`, `input`,
+`chip`, `Sheet`, `Icon`…). Nové styly přidávej do `src/styles.css` s proměnnými barev `--c-*` (kvůli tmavému režimu).
 
 ## 5. Nová role
 

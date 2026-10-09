@@ -1,7 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- Zástupná ikona: liliový hrot na modrém podkladu. Nahraď ikonou své aplikace (512×512, okraj ~10 % kvůli „maskable“). -->
-  <rect width="512" height="512" rx="96" fill="#002039"/>
-  <path fill="#ffd23f" d="M256 92c-38 50-38 106 0 178 38-72 38-128 0-178zM168 196c18 44 50 66 88 68-8-40-40-62-88-68zM344 196c-48 6-80 28-88 68 38-2 70-24 88-68z"/>
-  <rect x="236" y="268" width="40" height="120" rx="12" fill="#ffd23f"/>
+  <!-- Zástupná ikona: liliový hrot na pozadí v barvě lišty. Nahraď ikonou své aplikace (512×512, okraj ~10 % kvůli „maskable“).
+       Pozadí nech v barvě BARVY_LISTY[0] (src/lib/theme.ts) – podle ní se ikona v záložce přebarví na barvu lišty. -->
+  <rect width="512" height="512" rx="112" fill="#527760"/>
+  <path fill="#ffffff" d="M256 92c-38 50-38 106 0 178 38-72 38-128 0-178zM168 196c18 44 50 66 88 68-8-40-40-62-88-68zM344 196c-48 6-80 28-88 68 38-2 70-24 88-68z"/>
+  <rect x="236" y="268" width="40" height="120" rx="12" fill="#ffffff"/>
   <rect x="176" y="300" width="160" height="28" rx="14" fill="#ffd23f"/>
 </svg>

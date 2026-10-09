@@ -105,4 +105,4 @@ zadání připouští víc rozumných výkladů. Jinak rozhodni sám podle těch
 - `reference/infrastruktura.md` – hosting skauting.cz, GitHub skaut, první nasazení, provoz
 - `reference/bezpecnost.md` – osobní údaje, děti, tokeny, oprávnění, kontrola před vydáním
 - `reference/skautis.md` – přihlášení přes skautIS a jak ho ověřit
-- `reference/vzhled.md` – JVS Junáka, mobilní UI, texty v aplikaci
+- `reference/vzhled.md` – JVS Junáka, hotové třídy a komponenty (jako Schůzkovač), mobilní UI, texty v aplikaci

@@ -1,8 +1,12 @@
 import { render } from 'preact';
 import { registerSW } from 'virtual:pwa-register';
 import { App } from './app';
+import { applyVzhled } from './lib/theme';
+import { listenForInstall } from './lib/install';
 import './styles.css';
 
+applyVzhled();
+listenForInstall();
 render(<App />, document.getElementById('app')!);
 
 // Service worker: aplikace funguje offline. Novou verzi hledá při každém návratu do aplikace a každých 30 min;

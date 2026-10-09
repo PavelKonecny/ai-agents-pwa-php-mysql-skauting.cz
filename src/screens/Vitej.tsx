@@ -1,37 +1,47 @@
 // Úvod (bez přihlášení), přijetí pozvánky a návrat z přihlášení přes skautIS.
 
 import { useEffect, useState } from 'preact/hooks';
+import { APLIKACE } from '../../shared/schema';
 import { api, tokenZOdkazu } from '../lib/api';
 import { jdi, token, trasa, ukaz, ulozToken } from '../lib/stav';
+import { Icon, Logo } from '../components/ui';
+import { NaPlochu } from '../components/NaPlochu';
 
 const PROPOJIT = 'app-skautis-propojit';
 
 export function Vitej() {
   const [text, setText] = useState('');
-  const [info, setInfo] = useState<{ aplikace: { nazev: string; popis: string }; skautis: string } | null>(null);
-  useEffect(() => { api<typeof info>('info').then(setInfo).catch(() => {}); }, []);
+  const [skautis, setSkautis] = useState('');
+  useEffect(() => { api<{ skautis: string }>('info').then((i) => setSkautis(i.skautis)).catch(() => {}); }, []);
   const pripojit = () => {
     const t = tokenZOdkazu(text);
-    if (!t) return ukaz('Tohle nevypadá jako pozvánka.', true);
+    if (!t) return ukaz('Tohle nevypadá jako pozvánka. Zkopíruj celý odkaz, který ti přišel.', true);
     ulozToken(t);
     jdi('', true);
   };
   return (
-    <div class="stack">
-      <h1>{info?.aplikace.nazev ?? 'Vítej'}</h1>
-      {info?.aplikace.popis && <p class="tlumene">{info.aplikace.popis}</p>}
-      <div class="karta stack">
-        <h2>Mám pozvánku</h2>
-        <p class="maly tlumene">Pozvánku ti pošle správce jako odkaz. Stačí ji otevřít, nebo ji vlož sem:</p>
-        <input class="pole" value={text} placeholder="Vlož odkaz s pozvánkou" onInput={(e) => setText(e.currentTarget.value)} />
-        <button class="tlacitko" disabled={!text} onClick={pripojit}>Připojit se</button>
+    <div>
+      <div class="hero">
+        <Logo />
+        <h1>{APLIKACE.nazev}</h1>
+        <p>{APLIKACE.popis}</p>
       </div>
-      {info?.skautis && (
-        <div class="karta stack">
-          <h2>Mám propojený účet skautIS</h2>
-          <a class="tlacitko druhotne" href={info.skautis}>Přihlásit přes skautIS</a>
+      <div class="stack">
+        <div class="card stack">
+          <h2>Mám pozvánku</h2>
+          <p class="small muted" style={{ margin: 0 }}>Pozvánku ti pošle správce jako odkaz. Stačí ji otevřít. Pokud ji máš zkopírovanou, vlož ji sem:</p>
+          <input class="input" value={text} placeholder="Vlož odkaz s pozvánkou" onInput={(e) => setText(e.currentTarget.value)} />
+          <button class="btn block" disabled={!text} onClick={pripojit}>Připojit se</button>
         </div>
-      )}
+        {skautis && (
+          <div class="card stack">
+            <h2>Mám propojený účet skautIS</h2>
+            <a class="btn block secondary" href={skautis}><Icon name="link" size={18} /> Přihlásit přes skautIS</a>
+          </div>
+        )}
+        <NaPlochu />
+      </div>
+      <footer class="paticka small muted">{APLIKACE.nazev} · verze {__APP_VERSION__}</footer>
     </div>
   );
 }
@@ -43,7 +53,7 @@ export function Pozvanka() {
     if (t) ulozToken(t);
     jdi('', true);
   }, []);
-  return <p class="tlumene">Otevírám pozvánku…</p>;
+  return <p class="muted center">Otevírám pozvánku…</p>;
 }
 
 /** Spustí přihlášení přes skautIS. propojit = přihlášený uživatel si účet propojuje (ne přihlašuje). */
@@ -65,12 +75,15 @@ export function SkautisNavrat() {
       : api<{ token: string }>('skautis.prihlasit', { kod }).then((r) => { ulozToken(r.token); jdi('', true); })
     ).catch((e) => setChyba((e as Error).message));
   }, []);
-  if (!chyba) return <p class="tlumene">Dokončuji přihlášení přes skautIS…</p>;
+  if (!chyba) return <p class="muted center">Dokončuji přihlášení přes skautIS…</p>;
   return (
-    <div class="karta stack">
-      <h2>Přihlášení přes skautIS se nepovedlo</h2>
-      <p>{chyba}</p>
-      <button class="tlacitko" onClick={() => jdi('', true)}>Pokračovat</button>
+    <div class="stack">
+      <div class="center"><Logo size={56} /></div>
+      <div class="card stack">
+        <h2>Přihlášení přes skautIS se nepovedlo</h2>
+        <p style={{ margin: 0 }}>{chyba}</p>
+        <button class="btn block" onClick={() => jdi('', true)}>Pokračovat</button>
+      </div>
     </div>
   );
 }

@@ -25,6 +25,9 @@ export function ulozToken(t: string) {
   try { t ? localStorage.setItem(KLIC, t) : localStorage.removeItem(KLIC); } catch { /* soukromé okno */ }
 }
 
+/** Událost pro obrazovky: uživatel klepl na „Aktualizovat“ v horní liště → načíst data znovu. */
+export const OBNOVIT = 'app-obnovit';
+
 // --- Hlášky ---------------------------------------------------------------------
 export const hlaska = signal<{ text: string; chyba: boolean } | null>(null);
 let casovac: ReturnType<typeof setTimeout> | undefined;

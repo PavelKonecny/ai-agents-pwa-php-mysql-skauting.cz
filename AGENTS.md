@@ -24,6 +24,7 @@ Kde co je:
 - `api/lib/akce.php` – vlastní akce API (sem patří logika aplikace)
 - `api/lib/core.php` – jádro: přihlášení tokenem, pozvánky, pomocné funkce
 - `src/screens/` – obrazovky, `src/app.tsx` – rám, navigace, seznam obrazovek
+- `src/components/ui.tsx` – ikony a UI prvky, `src/styles.css` – vzhled (JVS, tmavý režim), `src/lib/theme.ts` – nastavení vzhledu
 - `tests/api.test.ts` – testy API
 
 Komunikuj s uživatelem česky. Uživatel nemusí být programátor – vysvětluj výsledky srozumitelně

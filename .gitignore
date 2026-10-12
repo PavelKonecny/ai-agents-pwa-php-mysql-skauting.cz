@@ -2,6 +2,9 @@ node_modules
 dist
 dist-nahrat
 *.local
+test-results
+playwright-report
+blob-report
 .DS_Store
 
 # konfigurace s hesly a lokální data – nikdy do gitu

@@ -1,4 +1,4 @@
-# Nasazení na hosting skauting.cz: po každém pushi do main se aplikace otestuje, sestaví
+# Nasazení na hosting skauting.cz: po každém pushi do main se aplikace otestuje (i v prohlížeči), sestaví
 # a nahraje přes FTP. Nahrávají se jen změněné soubory; api/config.php na serveru zůstává nedotčený.
 #
 # Jednorázové nastavení (Settings → Secrets and variables → Actions):
@@ -40,6 +40,17 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run dist
+      - name: Testy v prohlížeči (Playwright)
+        run: |
+          npx playwright install --with-deps chromium
+          npx playwright test
+      - name: Zpráva z testů v prohlížeči (při chybě)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14
 
       - name: FTP není nastavené – nahrávání přeskočeno
         if: env.MA_FTP != 'true'

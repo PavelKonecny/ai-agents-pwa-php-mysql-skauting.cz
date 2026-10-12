@@ -93,6 +93,40 @@ it('přihláška na akci', async () => {
 
 Spuštění: `npm test` (bez PHP se testy API přeskočí – na GitHubu běží vždy).
 
+## 3b. Test v prohlížeči (Playwright)
+
+`e2e/*.e2e.ts` – skutečná aplikace (sestavený balík `dist-nahrat/`) v mobilním Chromiu proti PHP API
+nad čerstvou SQLite databází. Testuj hlavní scénář **tak, jak ho dělá uživatel**: klepnutí a psaní.
+Prvky hledej podle toho, co vidí člověk (`getByRole`, `getByPlaceholder`, `getByLabel`, text) –
+ne podle tříd CSS; ikonová tlačítka proto potřebují `aria-label`.
+
+```ts
+import { expect, test } from '@playwright/test';
+import { api, bezVodorovnehoPosunu, prihlasit } from './pomocne';
+
+test('člen se přihlásí na výpravu', async ({ page }) => {
+  await page.goto('/');
+  await api(page, 'akce.uloz', { nazev: 'Výprava', datum: '2026-11-07' }); // příprava dat přes API
+  await prihlasit(page);                                                  // správce (pozvánka z instalace)
+  await page.getByRole('link', { name: 'Akce' }).click();
+  await page.locator('.item', { hasText: 'Výprava' }).click();
+  await page.getByRole('button', { name: 'Přihlásit se' }).click();
+  await expect(page.getByRole('status')).toContainText('Přihlášeno');
+  await page.reload();                                                    // uložilo se na server?
+  await expect(page.getByRole('button', { name: 'Odhlásit se' })).toBeVisible();
+  await bezVodorovnehoPosunu(page);
+});
+```
+
+- Pomocné funkce v `e2e/pomocne.ts`: `prihlasit(page, token?)`, `pozvat(page, prezdivka, role)`,
+  `api(page, akce, data)`, `potvrzovat(page)` (odsouhlasí `confirm`), `bezVodorovnehoPosunu(page)`.
+- Jiný uživatel = nový kontext prohlížeče: `const t = await browser.newContext({ ...test.info().project.use })`.
+- Testy běží postupně nad jednou databází – nespoléhej na prázdný seznam, používej jedinečné názvy.
+- Spuštění: `npm run e2e` (sestaví balík a spustí testy), `npm run e2e:ui` (okno s průběhem, krokování).
+  Poprvé je třeba stáhnout prohlížeč: `npx playwright install chromium`. Potřebuje PHP (jako `npm test`).
+- Když test selže, `playwright-report/` obsahuje fotku obrazovky a záznam (trace) – podívej se do něj,
+  než začneš měnit test. Test neupravuj tak, aby prošel, když je chyba v aplikaci.
+
 ## 4. Nová obrazovka
 
 `src/screens/Akce.tsx`:
@@ -155,7 +189,7 @@ potřeba číst data bez signálu, ulož poslední odpověď API do `localStorag
 ```bash
 npm run typecheck
 npm test
-npm run build
+npm run e2e        # sestaví balík a spustí testy v prohlížeči
 ```
 
 Pak v prohlížeči (`npm run api` + `npm run dev`) projdi změněné obrazovky na šířce 375 px a v tmavém

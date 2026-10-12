@@ -15,6 +15,7 @@ npm run api        # lokální PHP API (SQLite) – vypíše pozvánku správce
 npm run dev        # aplikace na http://localhost:5190
 npm run typecheck  # kontrola typů
 npm test           # testy (API se testuje přes php -S; potřebuje PHP 8.1+)
+npm run e2e        # sestaví balík a otestuje aplikaci v mobilním prohlížeči (Playwright)
 npm run build      # produkční sestavení
 ```
 
@@ -25,7 +26,7 @@ Kde co je:
 - `api/lib/core.php` – jádro: přihlášení tokenem, pozvánky, pomocné funkce
 - `src/screens/` – obrazovky, `src/app.tsx` – rám, navigace, seznam obrazovek
 - `src/components/ui.tsx` – ikony a UI prvky, `src/styles.css` – vzhled (JVS, tmavý režim), `src/lib/theme.ts` – nastavení vzhledu
-- `tests/api.test.ts` – testy API
+- `tests/api.test.ts` – testy API, `e2e/*.e2e.ts` – testy v prohlížeči (Playwright)
 
 Komunikuj s uživatelem česky. Uživatel nemusí být programátor – vysvětluj výsledky srozumitelně
 a u rozhodnutí, která mění data, oprávnění nebo osobní údaje, se nejdřív zeptej.

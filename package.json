@@ -10,13 +10,16 @@
     "test": "node scripts/build-php.mjs && vitest run",
     "typecheck": "tsc --noEmit",
     "api": "node scripts/dev-api.mjs",
-    "dist": "npm run build && node scripts/build-php.mjs --dist"
+    "dist": "npm run build && node scripts/build-php.mjs --dist",
+    "e2e": "npm run dist && playwright test",
+    "e2e:ui": "npm run dist && playwright test --ui"
   },
   "dependencies": {
     "@preact/signals": "^2.11.3",
     "preact": "^10.29.8"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.0",
     "@preact/preset-vite": "^2.10.6",
     "esbuild": "^0.28.2",
     "typescript": "^7.0.2",

@@ -18,7 +18,7 @@ technologie, služby ani závislosti, pokud to úkol opravdu nevyžaduje.
 | API | PHP 8.1+ bez frameworku a bez Composeru, JSON přes POST | `api/` |
 | Data | MySQL/MariaDB (hosting), SQLite (lokálně a v testech) | `api/lib/db.php` |
 | Schéma | **jediný zdroj pravdy** `shared/schema.ts` → generuje `api/lib/schema.php` | `shared/` |
-| Testy | Vitest; API se testuje přes skutečný `php -S` nad SQLite | `tests/` |
+| Testy | Vitest – API přes skutečný `php -S` nad SQLite; Playwright – aplikace v mobilním prohlížeči | `tests/`, `e2e/` |
 | Kód | GitHub, organizace **github.com/skaut** | – |
 | Provoz | hosting **skauting.cz** (Apache + PHP + MySQL), každá aplikace = vlastní subdoména + vlastní databáze | – |
 | Nasazení | GitHub Actions: push do `main` → testy → sestavení → FTP | `.github/workflows/` |
@@ -47,8 +47,9 @@ cron). Aplikace se proto sestaví do statických souborů a server řeší jen m
    říct, co se stalo a co má udělat (`throw new Chyba('kod', 'Česká věta.')`).
 9. **Tajemství nikdy do gitu.** `api/config.php`, hesla, FTP údaje, tokeny – nikdy. FTP údaje patří
    do GitHub Secrets. Před commitem zkontroluj `git status` a necommituj soubory, které jsi nevytvořil.
-10. **Hotovo = ověřeno.** Po změně: `npm run typecheck`, `npm test` (s PHP), u viditelné změny
-    vyzkoušej v prohlížeči (`npm run api` + `npm run dev`) a uživateli řekni, co jsi ověřil a co ne.
+10. **Hotovo = ověřeno.** Po změně: `npm run typecheck`, `npm test` (s PHP) a `npm run e2e` (Playwright).
+    Nová funkce = test API **i** test v prohlížeči (`e2e/`). U viditelné změny se podívej i očima
+    (`npm run api` + `npm run dev`) a uživateli řekni, co jsi ověřil a co ne.
 
 ## Běžné postupy
 
@@ -57,7 +58,8 @@ Podrobné recepty s ukázkami kódu: **`reference/postupy.md`**. Stručně:
 - **Nová tabulka / sloupec** → `shared/schema.ts` (`TABULKY`) → `npm test` (vygeneruje `schema.php`).
 - **Nová akce API** → funkce v `api/lib/akce.php` + řádek v `akceAplikace()` + test v `tests/api.test.ts`
   (oprávnění, hlavní scénář, neplatný vstup). Název `objekt.sloveso` (`schuzky.list`, `schuzky.uloz`).
-- **Nová obrazovka** → `src/screens/Nazev.tsx` + řádek v `OBRAZOVKY` v `src/app.tsx` (+ položka v `NAV`).
+- **Nová obrazovka** → `src/screens/Nazev.tsx` + řádek v `OBRAZOVKY` v `src/app.tsx` (+ položka v `NAV`)
+  + test hlavního scénáře v `e2e/` (Playwright).
 - **Nová role** → `ROLE` a `ROLE_NAZVY` v `shared/schema.ts`, pak oprávnění v akcích.
 - **Volání API z aplikace** → `await api<Typ>('objekt.sloveso', { … })`, chyby zobraz přes `ukaz(e.message, true)`.
 
@@ -73,7 +75,8 @@ Podrobné recepty s ukázkami kódu: **`reference/postupy.md`**. Stručně:
 ## Nasazení a provoz
 
 - Push do `main` = nasazení (workflow „Nasazení“). Práce probíhá ve větvích a přes pull requesty;
-  workflow „Kontrola“ spustí testy u každé změny.
+  workflow „Kontrola“ spustí testy (včetně Playwright) u každé změny. Když testy selžou, nenasadí se nic;
+  zpráva s fotkami a záznamem (`playwright-report`) je v Actions u běhu jako artefakt.
 - První nasazení (subdoména, databáze, `config.php`, GitHub Secrets, `install.php`): `reference/infrastruktura.md`.
 - **`install.php` otevírej v anonymním okně** (service worker aplikace by ho v běžném okně mohl zakrýt).
 - Verze se počítá sama (`major.minor.počet commitů`) a je vidět v Profilu i s datem sestavení.

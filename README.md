@@ -41,7 +41,9 @@ pravidla a postupy ze souboru [AGENTS.md](AGENTS.md) a skillu
 npm install
 npm run api   # PHP API nad SQLite (potřebuje PHP 8.1+), vypíše pozvánku správce
 npm run dev   # http://localhost:5190
-npm test
+npm test      # testy API
+npx playwright install chromium   # jednou: prohlížeč pro testy
+npm run e2e   # testy v prohlížeči (Playwright)
 ```
 
 | Složka | Obsah |
@@ -50,6 +52,7 @@ npm test
 | `api/` | PHP API (`index.php`, `install.php`, `skautis.php`, `lib/`) |
 | `src/` | aplikace (Preact + TypeScript) |
 | `tests/` | testy API přes `php -S` |
+| `e2e/` | testy v prohlížeči (Playwright) – mobilní Chromium proti PHP API |
 | `.github/workflows/` | kontrola změn a nasazení na hosting |
 | `.claude/skills/skaut-app/` | pravidla a postupy pro AI agenty |
 

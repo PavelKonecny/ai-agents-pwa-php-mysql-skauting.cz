@@ -12,6 +12,8 @@ $zpet = static function (string $hash): never {
     exit;
 };
 
+// vypnutý skautIS (prázdné appid): hned skončit – žádná databáze ani volání skautISu pro anonymní POST
+if (trim((string) ($config['skautis']['appid'] ?? '')) === '') $zpet('skautis?chyba=' . rawurlencode('Přihlášení přes skautIS není zapnuté.'));
 $token = (string) ($_POST['skautIS_Token'] ?? '');
 if ($token === '') $zpet('skautis?chyba=' . rawurlencode('skautIS nepředal přihlášení.'));
 try {
@@ -22,6 +24,6 @@ try {
 } catch (Chyba $e) {
     $zpet('skautis?chyba=' . rawurlencode($e->getMessage()));
 } catch (Throwable $e) {
-    error_log('[skautis] ' . $e);
+    error_log('[skautis] ' . popisVyjimky($e));
     $zpet('skautis?chyba=' . rawurlencode('Přihlášení přes skautIS se nepovedlo.'));
 }

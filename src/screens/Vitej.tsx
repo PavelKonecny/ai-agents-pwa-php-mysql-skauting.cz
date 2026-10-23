@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import { APLIKACE } from '../../shared/schema';
 import { api, tokenZOdkazu } from '../lib/api';
-import { jdi, token, trasa, ukaz, ulozToken } from '../lib/stav';
+import { hello, jdi, token, trasa, ukaz, ulozToken } from '../lib/stav';
 import { Icon, Logo } from '../components/ui';
 import { NaPlochu } from '../components/NaPlochu';
 
@@ -46,14 +46,45 @@ export function Vitej() {
   );
 }
 
-/** #/pozvanka?t=… – uloží klíč z pozvánky a ověří ho. */
+/**
+ * #/pozvanka?t=… – uloží klíč z pozvánky. Když je prohlížeč přihlášený jiným účtem, nejdřív se zeptá a cizí pozvánku
+ * ověří, než původní přihlášení nahradí – odkaz od někoho jiného tak nikoho tiše nepřihlásí jako cizí účet
+ * (a neplatný odkaz nikoho neodhlásí).
+ */
 export function Pozvanka() {
+  const t = trasa.value.param.get('t') ?? '';
+  const jiny = !!t && !!token.value && token.value !== t;
+  const [chyba, setChyba] = useState('');
   useEffect(() => {
-    const t = trasa.value.param.get('t');
+    if (jiny) return;
     if (t) ulozToken(t);
     jdi('', true);
   }, []);
-  return <p class="muted center">Otevírám pozvánku…</p>;
+  if (!jiny) return <p class="muted center">Otevírám pozvánku…</p>;
+  const prepnout = async () => {
+    try {
+      const r = await fetch('./api/', { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ action: 'hello', token: t }) });
+      const j = await r.json();
+      if (!j.ok) { setChyba(j.error?.message ?? 'Pozvánka neplatí.'); return; }
+      ulozToken(t);
+      jdi('', true);
+    } catch { setChyba('Pozvánku se nepodařilo ověřit. Zkus to znovu.'); }
+  };
+  return (
+    <div class="stack">
+      <div class="center"><Logo size={56} /></div>
+      <div class="card stack">
+        <h2>Otevřít jinou pozvánku?</h2>
+        <p style={{ margin: 0 }}>V tomto prohlížeči už jsi přihlášený{hello.value ? <> jako <b>{hello.value.ja.prezdivka}</b></> : ''}. Pozvánka patří jinému účtu – když ji otevřeš, přepneš se na něj.</p>
+        <p class="small muted" style={{ margin: 0 }}>Pokud jsi odkaz nečekal(a) nebo ti ho poslal někdo cizí, zůstaň přihlášený.</p>
+        {chyba && <p class="small" role="alert" style={{ margin: 0, color: 'var(--c-danger, #c0392b)' }}>{chyba}</p>}
+        <div class="grid2">
+          <button class="btn secondary" onClick={() => jdi('', true)}>Zůstat přihlášený</button>
+          <button class="btn" onClick={prepnout}>Přepnout na pozvánku</button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 /** Spustí přihlášení přes skautIS. propojit = přihlášený uživatel si účet propojuje (ne přihlašuje). */

@@ -73,7 +73,7 @@ export function Sprava() {
                     {p.skautis && <span class="chip info">skautIS</span>}
                     {p.zruseno && <span class="chip warn">zrušeno</span>}
                   </div>
-                  <div class="small muted">{p.popis}{p.posledniPouziti ? ` · naposledy ${new Date(p.posledniPouziti).toLocaleString('cs-CZ')}` : ' · zatím neotevřeno'}</div>
+                  <div class="small muted">{p.popis}{p.posledniPouziti ? ` · naposledy ${new Date(p.posledniPouziti).toLocaleString('cs-CZ')}` : p.vyprsela ? ' · pozvánka vypršela – vytvoř nový odkaz' : ' · zatím neotevřeno'}</div>
                 </div>
                 {p.id !== ja.value?.id && (
                   <div class="row item-actions">

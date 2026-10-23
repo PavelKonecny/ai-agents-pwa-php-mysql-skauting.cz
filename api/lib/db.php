@@ -23,6 +23,7 @@ final class Db
         } else {
             $this->pdo->exec('PRAGMA journal_mode = WAL');
             $this->pdo->exec('PRAGMA busy_timeout = 10000');
+            $this->pdo->exec('PRAGMA secure_delete = ON'); // smazané osobní údaje se přepíšou, nezůstanou v souboru
         }
     }
 
@@ -152,6 +153,75 @@ final class Db
             $out[] = $radek;
         }
         return $out;
+    }
+
+    /**
+     * Jen vybrané sloupce a bez smazaných řádků (filtr v SQL) – pro výpisy a počty, které nepotřebují velké sloupce
+     * (texty, obrázky). Nenačítej celé tabulky tam, kde stačí pár sloupců – cena požadavku pak neroste s objemem dat.
+     */
+    public function ctiSloupce(string $tabulka, array $sloupce, string $kde = '', array $param = []): array
+    {
+        $platne = array_values(array_intersect(self::sloupce($tabulka), $sloupce));
+        $sql = 'SELECT `' . implode('`, `', $platne) . '` FROM `' . self::nazev($tabulka) . "` WHERE COALESCE(`deleted`, '') <> '1'" . ($kde !== '' ? " AND ($kde)" : '');
+        $st = $this->pdo->prepare($sql);
+        $st->execute($param);
+        $out = [];
+        foreach ($st->fetchAll() as $r) {
+            $radek = [];
+            foreach ($platne as $c) $radek[$c] = (string) ($r[$c] ?? '');
+            $out[] = $radek;
+        }
+        return $out;
+    }
+
+    /** Počet živých řádků podle hodnoty sloupce (GROUP BY) – bez načítání obsahu. */
+    public function pocetPodle(string $tabulka, string $sloupec, string $kde = '', array $param = []): array
+    {
+        if (!in_array($sloupec, self::sloupce($tabulka), true)) return [];
+        $st = $this->pdo->prepare("SELECT `$sloupec` AS k, COUNT(*) AS n FROM `" . self::nazev($tabulka) . "` WHERE COALESCE(`deleted`, '') <> '1'"
+            . ($kde !== '' ? " AND ($kde)" : '') . " GROUP BY `$sloupec`");
+        $st->execute($param);
+        $out = [];
+        foreach ($st->fetchAll() as $r) $out[(string) $r['k']] = (int) $r['n'];
+        return $out;
+    }
+
+    /**
+     * Trvale smaže řádky podle id. Běžné mazání je měkké (deleted = '1'); osobní údaje, které už nejsou potřeba
+     * (GDPR), a zbytečná velká data (obrázky) se mažou takhle.
+     */
+    public function smaz(string $tabulka, array $ids): void
+    {
+        if (!$ids) return;
+        $st = $this->pdo->prepare('DELETE FROM `' . self::nazev($tabulka) . '` WHERE `id` = ?');
+        foreach ($ids as $id) $st->execute([(string) $id]);
+    }
+
+    /**
+     * Přičte 1 do počítadla (klíč, okno) a vrátí aktuální součet (limit požadavků, api/lib/limity.php).
+     * Bez globálního zámku: jeden UPDATE, případně INSERT. Souběžné první požadavky můžou založit dva řádky – proto SUM.
+     */
+    public function pricti(string $klicHash, string $okno, string $noveId): int
+    {
+        $t = self::nazev('Pocitadla');
+        $cislo = $this->driver === 'mysql' ? 'CAST(`pocet` AS SIGNED)' : 'CAST(`pocet` AS INTEGER)';
+        $up = $this->pdo->prepare("UPDATE `$t` SET `pocet` = $cislo + 1 WHERE `klicHash` = ? AND `okno` = ?");
+        $up->execute([$klicHash, $okno]);
+        if ($up->rowCount() === 0) {
+            $cols = self::sloupce('Pocitadla');
+            $radek = array_merge(array_fill_keys($cols, ''), ['id' => $noveId, 'klicHash' => $klicHash, 'okno' => $okno, 'pocet' => '1', 'updatedAt' => gmdate('Y-m-d\TH:i:s\Z'), 'updatedBy' => 'limit']);
+            $this->pdo->prepare("INSERT INTO `$t` (`" . implode('`, `', $cols) . '`) VALUES (' . implode(', ', array_fill(0, count($cols), '?')) . ')')
+                ->execute(array_map(fn ($c) => (string) $radek[$c], $cols));
+        }
+        $st = $this->pdo->prepare("SELECT SUM($cislo) FROM `$t` WHERE `klicHash` = ? AND `okno` = ?");
+        $st->execute([$klicHash, $okno]);
+        return (int) $st->fetchColumn();
+    }
+
+    /** Smaže počítadla starších oken (okno < $pred). */
+    public function uklidPocitadel(string $pred): void
+    {
+        $this->pdo->prepare('DELETE FROM `' . self::nazev('Pocitadla') . '` WHERE `okno` < ?')->execute([$pred]);
     }
 
     /** Upsert řádků podle id. */

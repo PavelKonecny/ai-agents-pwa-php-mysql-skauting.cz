@@ -6,6 +6,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/schema.php';
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/akce.php';
+require_once __DIR__ . '/limity.php';
 require_once __DIR__ . '/skautis.php';
 
 /** Chyba pro uživatele: kód (pro aplikaci) + česká zpráva (zobrazí se). */
@@ -177,15 +178,49 @@ function obsluz(App $app, array $req): array
     } catch (Chyba $e) {
         return ['ok' => false, 'error' => ['code' => $e->kod, 'message' => $e->getMessage()]];
     } catch (Throwable $e) {
-        error_log('[api] ' . $e);
+        error_log('[api] ' . popisVyjimky($e));
         return ['ok' => false, 'error' => ['code' => 'internal', 'message' => $app->cfg('debug') ? $e->getMessage() : 'Chyba serveru. Zkus to prosím znovu.']];
     }
+}
+
+/**
+ * Výjimka do logu: třída, zpráva, místo a stack trace BEZ argumentů funkcí – argumenty můžou obsahovat
+ * tokeny nebo osobní údaje (výchozí PHP je do trace vypisuje, pokud není zend.exception_ignore_args).
+ */
+function popisVyjimky(Throwable $e): string
+{
+    $out = get_class($e) . ': ' . $e->getMessage() . ' v ' . basename($e->getFile()) . ':' . $e->getLine();
+    foreach (array_slice($e->getTrace(), 0, 12) as $i => $t) {
+        $out .= "\n  #{$i} " . (isset($t['file']) ? basename($t['file']) . ':' . ($t['line'] ?? '?') . ' ' : '') . ($t['class'] ?? '') . ($t['type'] ?? '') . ($t['function'] ?? '') . '()';
+    }
+    return $out;
+}
+
+/**
+ * Hodnota do CSV exportu: text začínající =, +, -, @ (i po mezeře či tabulátoru) by Excel spustil jako vzorec
+ * („CSV injection“) – dostane apostrof. Čísla (i záporné částky) zůstanou čísly. Exporty vždy přes csvRadek().
+ */
+function csvBunka(mixed $v): mixed
+{
+    if (is_int($v) || is_float($v) || $v === null || is_bool($v)) return $v;
+    $t = (string) $v;
+    if (is_numeric(trim($t))) return $t;
+    return preg_match('/^\s*[=+\-@]/u', $t) || preg_match('/^[\t\r]/', $t) ? "'" . $t : $t;
+}
+
+/** Řádek CSV se středníkem (Excel v češtině) a ochranou proti vzorcům. */
+function csvRadek($f, array $radek): void
+{
+    fputcsv($f, array_map('csvBunka', $radek), ';', '"', '');
 }
 
 function rozcestnik(App $app, array $req): mixed
 {
     $akce = (string) ($req['action'] ?? '');
-    if ($app->cfg('test') && isset($req['_now'])) $app->nastavCas((string) $req['_now']);
+    // posun času jen v testech pod php -S – v provozu ho nejde zapnout ani omylem ('test' => true v config.php)
+    if ($app->cfg('test') && PHP_SAPI === 'cli-server' && isset($req['_now'])) $app->nastavCas((string) $req['_now']);
+    // limit požadavků podle IP a tokenu (api/lib/limity.php)
+    hlidejLimity($app, $akce, $req['token'] ?? null);
     // akce bez přihlášení
     if ($akce === 'ping') return ['serverTime' => $app->ted()];
     if ($akce === 'info') return ['aplikace' => APLIKACE, 'skautis' => skautisZapnuty($app) ? skautisLoginUrl($app) : ''];
@@ -210,12 +245,20 @@ function rozcestnik(App $app, array $req): mixed
 
 /** Přístup, který se tak dlouho nepoužil, přestane platit (správce ho obnoví „Novým odkazem“). */
 const NEAKTIVNI_DNI = 365;
+/** Pozvánka, kterou nikdo neotevřel, platí jen týden od vytvoření (nebo od nového odkazu). */
+const PLATNOST_POZVANKY_DNI = 7;
+
+function pozvankaVyprsela(App $app, array $p): bool
+{
+    return $p['posledniPouziti'] === '' && $p['vytvoreno'] !== '' && strtotime($app->ted()) - strtotime($p['vytvoreno']) > PLATNOST_POZVANKY_DNI * 86400;
+}
 
 function prihlasit(App $app, mixed $token): Ctx
 {
     if (!is_string($token) || strlen($token) < 16) throw new Chyba('unauthorized', 'Chybí přístupový klíč. Otevři znovu pozvánku.');
     $p = zive($app->db->cti('Pristupy', '`tokenHash` = ?', [App::otisk($token)]))[0] ?? null;
     if (!$p || $p['zruseno'] !== '') throw new Chyba('unauthorized', 'Pozvánka neplatí nebo byla zrušena. Požádej správce o novou.');
+    if (pozvankaVyprsela($app, $p)) throw new Chyba('vyprsela', 'Pozvánka vypršela – platí ' . PLATNOST_POZVANKY_DNI . ' dní od vytvoření. Požádej správce o nový odkaz.');
     $ted = $app->ted();
     $naposledy = $p['posledniPouziti'] !== '' ? $p['posledniPouziti'] : $p['vytvoreno'];
     if ($naposledy !== '' && strtotime($ted) - strtotime($naposledy) > NEAKTIVNI_DNI * 86400) {
@@ -238,6 +281,12 @@ function verejnyPristup(array $p): array
     ];
 }
 
+/** Přístup pro správu (seznam lidí): navíc, zda neotevřená pozvánka už vypršela. */
+function pristupProSpravu(App $app, array $p): array
+{
+    return verejnyPristup($p) + ['vyprsela' => pozvankaVyprsela($app, $p)];
+}
+
 function hello(Ctx $ctx): array
 {
     return ['ja' => verejnyPristup($ctx->kdo), 'aplikace' => APLIKACE, 'skautis' => skautisZapnuty($ctx->app) ? skautisLoginUrl($ctx->app) : '', 'serverTime' => $ctx->app->ted()];
@@ -256,7 +305,7 @@ function profilPrezdivka(Ctx $ctx, array $req): array
 function pristupyList(Ctx $ctx): array
 {
     $ctx->jen('admin');
-    $list = array_map('verejnyPristup', zive($ctx->app->db->cti('Pristupy')));
+    $list = array_map(fn ($p) => pristupProSpravu($ctx->app, $p), zive($ctx->app->db->cti('Pristupy')));
     usort($list, fn ($a, $b) => strcmp($b['vytvoreno'], $a['vytvoreno']));
     return $list;
 }
@@ -296,7 +345,9 @@ function pristupyRelink(Ctx $ctx, string $id): array
 {
     $p = nactiCiziPristup($ctx, $id);
     $token = $ctx->app->token();
-    $radek = uloz($ctx, 'Pristupy', array_merge($p, ['tokenHash' => App::otisk($token), 'zruseno' => '', 'posledniPouziti' => $ctx->app->ted()]));
+    // nový odkaz = nová platnost; dřív otevřený přístup se tím rovnou „obnoví“ (posledniPouziti), nový běží týden
+    $radek = uloz($ctx, 'Pristupy', array_merge($p, ['tokenHash' => App::otisk($token), 'zruseno' => '', 'vytvoreno' => $ctx->app->ted(),
+        'posledniPouziti' => $p['posledniPouziti'] !== '' ? $ctx->app->ted() : '']));
     return ['token' => $token, 'pristup' => verejnyPristup($radek)];
 }
 

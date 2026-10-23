@@ -29,7 +29,7 @@ const port = 8095;
 const srv = spawn(PHP, ['-S', `127.0.0.1:${port}`, '-t', join(root, 'api')], { stdio: 'inherit' });
 setTimeout(async () => {
   try {
-    const html = await (await fetch(`http://127.0.0.1:${port}/install.php?key=lokalni-vyvoj`)).text();
+    const html = await (await fetch(`http://127.0.0.1:${port}/install.php`, { method: 'POST', body: new URLSearchParams({ key: 'lokalni-vyvoj' }) })).text();
     const odkaz = html.match(/href="([^"]*#\/pozvanka[^"]*)"/)?.[1];
     console.log(odkaz ? `\nPozvánka správce (otevři po spuštění npm run dev):\n${odkaz.replace(/&amp;/g, '&')}\n` : '\nSprávce už existuje (pozvánku najdeš v prohlížeči, kde jsi ji otevřel).\n');
   } catch { /* server ještě neběží */ }

@@ -31,4 +31,11 @@ AddType image/svg+xml .svg
   </If>
   Header set X-Content-Type-Options "nosniff"
   Header set Referrer-Policy "strict-origin-when-cross-origin"
+  # Bezpečnost (viz .claude/skills/skaut-app/reference/bezpecnost.md): skripty jen z vlastního webu – kdyby se
+  # do stránky dostal cizí kód (třeba javascript: odkaz), nespustí se; aplikace nejde vložit do cizí stránky
+  # (clickjacking); prohlížeč si zapamatuje HTTPS. Volá-li aplikace jiný web (API třetí strany), přidej jeho
+  # adresu do connect-src – nikdy nepřidávej 'unsafe-eval' ani skripty z CDN.
+  Header set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+  Header set X-Frame-Options "DENY"
+  Header always set Strict-Transport-Security "max-age=31536000" "expr=%{HTTPS} == 'on'"
 </IfModule>

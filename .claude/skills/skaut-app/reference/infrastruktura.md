@@ -59,11 +59,14 @@ Nasazení nahrává jen změněné soubory (stav si pamatuje v `.ftp-deploy-sync
 ## 5. První spuštění
 
 1. Ověř `https://nazev.skauting.cz/api/` → `{"ok":true,"data":{"status":"běží"}}`.
-2. **V anonymním okně** otevři `https://nazev.skauting.cz/api/install.php?key=<install_key>`.
+2. **V anonymním okně** otevři `https://nazev.skauting.cz/api/install.php` a do formuláře zadej `install_key`
+   z `config.php` (klíč se nikdy nepíše do adresy – zůstal by v logu serveru a v historii prohlížeče).
    Vytvoří tabulky a zobrazí **pozvánku správce** – otevři ji (je to tvůj přístup, nikomu ji neposílej).
 3. V aplikaci → Správa → pozvi další lidi.
 
-Ztracená pozvánka správce: `install.php?key=…&dalsi=1` vytvoří dalšího správce.
+Ztracená pozvánka správce: ve formuláři `install.php` zaškrtni „vytvořit dalšího správce“.
+Kdo zná `install_key`, může si vytvořit správce – po prvním spuštění klíč v `config.php` změň
+(nebo `install.php` z hostingu smaž a nahraj ho, jen když ho potřebuješ).
 
 ## 6. Provoz
 

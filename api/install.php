@@ -1,12 +1,16 @@
 <?php
 // První nastavení: vytvoří tabulky a pozvánku pro prvního správce.
-// Otevři v ANONYMNÍM okně:  https://<adresa>/api/install.php?key=<install_key z config.php>
-//   …&dalsi=1   vytvoří dalšího správce (např. při ztrátě pozvánky)
+// Otevři v ANONYMNÍM okně https://<adresa>/api/install.php a do formuláře zadej install_key z config.php.
+// Klíč se posílá formulářem (POST), nikdy v adrese – adresa zůstává v logu serveru a v historii prohlížeče.
+// Zaškrtnutím „dalšího správce“ vytvoříš dalšího správce (např. při ztrátě pozvánky).
 declare(strict_types=1);
 
 header('Content-Type: text/html; charset=utf-8');
 header('Cache-Control: no-store');
 header('X-Robots-Tag: noindex');
+header('X-Frame-Options: DENY');
+header("Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'");
+header('Referrer-Policy: no-referrer');
 
 $stranka = static function (string $titulek, string $obsah): never {
     echo '<!doctype html><html lang="cs"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
@@ -23,7 +27,14 @@ $config = require $configFile;
 
 $klic = (string) ($config['install_key'] ?? '');
 if ($klic === '' || str_starts_with($klic, 'ZMEN-MNE')) $stranka('Nastav klíč', '<p class="err">V config.php nastav vlastní <b>install_key</b>.</p>');
-if (!hash_equals($klic, (string) ($_GET['key'] ?? ''))) { http_response_code(403); $stranka('Přístup odepřen', '<p class="err">Chybí nebo nesedí parametr <b>?key=</b>.</p>'); }
+$formular = '<form method="post"><p><label>Instalační klíč (<b>install_key</b> z config.php)<br><input type="password" name="key" required autofocus style="width:100%;padding:.5rem;font:inherit"></label></p>'
+    . '<p><label><input type="checkbox" name="dalsi" value="1"> vytvořit dalšího správce (např. při ztrátě pozvánky)</label></p>'
+    . '<p><button type="submit" style="padding:.5rem 1rem;font:inherit">Pokračovat</button></p></form>';
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+    $varovani = isset($_GET['key']) ? '<p class="err">Klíč se nezadává do adresy – zadej ho do formuláře (a v config.php ho raději změň, adresa s ním může zůstat v historii prohlížeče).</p>' : '';
+    $stranka('Instalace', $varovani . $formular);
+}
+if (!hash_equals($klic, (string) ($_POST['key'] ?? ''))) { http_response_code(403); $stranka('Přístup odepřen', '<p class="err">Klíč nesedí.</p>' . $formular); }
 
 require_once __DIR__ . '/lib/core.php';
 try {
@@ -42,12 +53,12 @@ $koren = (string) ($config['app_url'] ?? '') ?: ($https ? 'https' : 'http') . ':
 $obsah = '<p class="ok">Databáze je připravená.</p>';
 if ($log) $obsah .= '<ul><li>' . implode('</li><li>', array_map($esc, $log)) . '</li></ul>';
 try {
-    $token = zalozSpravce($app, isset($_GET['dalsi']));
+    $token = zalozSpravce($app, ($_POST['dalsi'] ?? '') === '1');
     $odkaz = $koren . '#/pozvanka?t=' . $token;
     $obsah .= '<h2>Pozvánka správce</h2><p>Otevři tento odkaz v telefonu nebo prohlížeči. Je to tvůj osobní přístup – nikomu ho neposílej, zobrazí se jen teď:</p>'
         . '<a class="link" href="' . $esc($odkaz) . '">' . $esc($odkaz) . '</a>';
 } catch (Chyba $e) {
     if ($e->kod !== 'exists') throw $e;
-    $obsah .= '<p>Správce už existuje. Dalšího vytvoříš přidáním <b>&amp;dalsi=1</b> k adrese této stránky.</p>';
+    $obsah .= '<p>Správce už existuje. Dalšího vytvoříš zaškrtnutím „vytvořit dalšího správce“ ve formuláři.</p>' . $formular;
 }
 $stranka(APLIKACE['nazev'] . ' – instalace', $obsah);

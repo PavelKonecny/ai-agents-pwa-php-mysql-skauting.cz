@@ -221,6 +221,21 @@ export function BackButton({ href, label }: { href: string; label: string }) {
   return <a class="backbtn" href={href}><Icon name="left" size={20} /> {label}</a>;
 }
 
+/** Adresa bezpečná pro href: jen http(s). Cokoli jiného (javascript:, data:…) vrátí undefined. */
+export function bezpecnyOdkaz(url: string | undefined): string | undefined {
+  return url && /^https?:\/\//i.test(url.trim()) ? url.trim() : undefined;
+}
+
+/**
+ * Odkaz na cizí web z uložených dat (zadal ho uživatel). Vždy používej tento prvek místo <a href={…}>:
+ * javascript: odkaz by se po kliknutí spustil v aplikaci. Neplatný odkaz se zobrazí jen jako text.
+ */
+export function OdkazVen({ href, children }: { href: string | undefined; children?: ComponentChildren }) {
+  const url = bezpecnyOdkaz(href);
+  if (!url) return <span class="muted">{children ?? href}</span>;
+  return <a href={url} target="_blank" rel="noopener noreferrer"><Icon name="external" size={14} /> {children ?? url}</a>;
+}
+
 export function Empty({ icon, children }: { icon: string; children: ComponentChildren }) {
   return (
     <div class="empty">

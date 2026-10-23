@@ -82,6 +82,76 @@ function textVolitelny(array $req, string $pole, int $max = 200): string
     return ($req[$pole] ?? null) === null || $req[$pole] === '' ? '' : text($req, $pole, $max);
 }
 
+/**
+ * Volitelný odkaz na web z požadavku: prázdný, nebo http(s)://… Jiné adresy (javascript:, data:…) odmítne –
+ * uložený javascript: odkaz by se po kliknutí spustil v aplikaci a mohl ukrást přístup z prohlížeče.
+ * Každé pole s adresou ukládej přes tuto funkci; v aplikaci ho zobrazuj přes <OdkazVen> (src/components/ui.tsx).
+ */
+function odkaz(array $req, string $pole, int $max = 2000): string
+{
+    $v = textVolitelny($req, $pole, $max);
+    if ($v !== '' && !preg_match('#^https?://[^\s]+$#i', $v)) throw new Chyba('bad_request', 'Odkaz musí začínat http:// nebo https://');
+    return $v;
+}
+
+/**
+ * Ověřený cíl stahování ['host', 'port', 'ip'], nebo null: jen http(s), porty 80/443 a veřejné IP adresy.
+ * Ochrana proti zneužití serveru k požadavkům do jeho vnitřní sítě (SSRF) – localhost, 10.x, 192.168.x,
+ * 169.254.x (metadata cloudu)… $test = povolit 127.0.0.1 a jiné porty (jen testy).
+ */
+function verejnaAdresa(string $url, bool $test = false): ?array
+{
+    $u = parse_url($url);
+    $schema = strtolower($u['scheme'] ?? '');
+    $host = strtolower(trim($u['host'] ?? '', '[]'));
+    if (!in_array($schema, ['http', 'https'], true) || $host === '' || isset($u['user']) || isset($u['pass'])) return null;
+    $port = (int) ($u['port'] ?? ($schema === 'https' ? 443 : 80));
+    if (!$test && !in_array($port, [80, 443], true)) return null;
+    $ips = filter_var($host, FILTER_VALIDATE_IP) ? [$host] : array_merge(
+        array_column(@dns_get_record($host, DNS_A) ?: [], 'ip'),
+        array_column(@dns_get_record($host, DNS_AAAA) ?: [], 'ipv6'),
+    );
+    if (!$ips) return null;
+    foreach ($ips as $ip) {
+        if ($test && $ip === '127.0.0.1') continue;
+        if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) return null;
+        // IPv4 zabalená v IPv6 (::ffff:10.0.0.1) a sdílený prostor operátorů 100.64.0.0/10 filtr nezachytí
+        if (stripos($ip, '::ffff:') === 0) return null;
+        if (str_contains($ip, '.') && (ip2long($ip) & 0xFFC00000) === 0x64400000) return null;
+    }
+    return ['host' => $host, 'port' => $port, 'ip' => $ips[0]];
+}
+
+/**
+ * Stáhne stránku z webu (např. náhled odkazu) – jen z veřejných adres, max. $max bajtů, krátké časové limity.
+ * Přesměrování sleduje ručně a každou další adresu znovu ověří; spojí se jen na ověřenou IP.
+ * Vrací ['kod' => HTTP kód, 'typ' => Content-Type, 'telo' => obsah], nebo null. Stahování z webu nikdy
+ * nedělej přímo přes curl / file_get_contents s adresou od uživatele – vždy přes tuto funkci.
+ */
+function stahniVerejne(App $app, string $url, int $max = 300000): ?array
+{
+    if (!function_exists('curl_init')) return null;
+    $test = (bool) $app->cfg('test');
+    for ($i = 0; $i <= 4; $i++) {
+        $cil = verejnaAdresa($url, $test);
+        if (!$cil) return null;
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true, CURLOPT_FOLLOWLOCATION => false, CURLOPT_CONNECTTIMEOUT => 4, CURLOPT_TIMEOUT => 8,
+            CURLOPT_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS, CURLOPT_RANGE => '0-' . $max, CURLOPT_USERAGENT => 'SkautApp/1.0',
+            CURLOPT_RESOLVE => ["{$cil['host']}:{$cil['port']}:" . (str_contains($cil['ip'], ':') ? "[{$cil['ip']}]" : $cil['ip'])],
+        ]);
+        $telo = curl_exec($ch);
+        $kod = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        $typ = (string) curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+        $dalsi = (string) curl_getinfo($ch, CURLINFO_REDIRECT_URL);
+        if ($telo === false) return null;
+        if ($kod >= 300 && $kod < 400 && $dalsi !== '') { $url = $dalsi; continue; }
+        return ['kod' => $kod, 'typ' => $typ, 'telo' => substr((string) $telo, 0, $max)];
+    }
+    return null;
+}
+
 function prazdnyRadek(string $tabulka, string $id): array
 {
     $r = [];
@@ -138,12 +208,19 @@ function rozcestnik(App $app, array $req): mixed
     throw new Chyba('bad_request', "Neznámá akce „{$akce}“.");
 }
 
+/** Přístup, který se tak dlouho nepoužil, přestane platit (správce ho obnoví „Novým odkazem“). */
+const NEAKTIVNI_DNI = 365;
+
 function prihlasit(App $app, mixed $token): Ctx
 {
     if (!is_string($token) || strlen($token) < 16) throw new Chyba('unauthorized', 'Chybí přístupový klíč. Otevři znovu pozvánku.');
     $p = zive($app->db->cti('Pristupy', '`tokenHash` = ?', [App::otisk($token)]))[0] ?? null;
     if (!$p || $p['zruseno'] !== '') throw new Chyba('unauthorized', 'Pozvánka neplatí nebo byla zrušena. Požádej správce o novou.');
     $ted = $app->ted();
+    $naposledy = $p['posledniPouziti'] !== '' ? $p['posledniPouziti'] : $p['vytvoreno'];
+    if ($naposledy !== '' && strtotime($ted) - strtotime($naposledy) > NEAKTIVNI_DNI * 86400) {
+        throw new Chyba('unauthorized', 'Přístup vypršel – rok se nepoužil. Požádej správce o nový odkaz.');
+    }
     // poslední použití stačí zapisovat jednou za hodinu
     if ($p['posledniPouziti'] === '' || strtotime($ted) - strtotime($p['posledniPouziti']) > 3600) {
         $p['posledniPouziti'] = $ted;
@@ -219,7 +296,7 @@ function pristupyRelink(Ctx $ctx, string $id): array
 {
     $p = nactiCiziPristup($ctx, $id);
     $token = $ctx->app->token();
-    $radek = uloz($ctx, 'Pristupy', array_merge($p, ['tokenHash' => App::otisk($token), 'zruseno' => '']));
+    $radek = uloz($ctx, 'Pristupy', array_merge($p, ['tokenHash' => App::otisk($token), 'zruseno' => '', 'posledniPouziti' => $ctx->app->ted()]));
     return ['token' => $token, 'pristup' => verejnyPristup($radek)];
 }
 

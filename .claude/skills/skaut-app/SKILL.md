@@ -40,14 +40,17 @@ cron). Aplikace se proto sestaví do statických souborů a server řeší jen m
    ne hodnotu v databázi – jinak se rozbijí existující data.
 5. **Minimum osobních údajů.** Uživatelé jsou často děti 10–15 let: jen přezdívky, žádné e-maily,
    telefony, adresy ani rodná čísla, pokud to není nezbytné a odsouhlasené. Viz `reference/bezpecnost.md`.
-6. **Mobil na prvním místě.** Každou obrazovku ověř na šířce 375 px (iPhone) i v tmavém režimu.
-7. **Malá data.** Žádné obrázky v seznamech, které se stahují pořád dokola; velké seznamy načítej
+6. **Nevěř ničemu od klienta.** Adresy ukládej přes `odkaz()` a zobrazuj přes `<OdkazVen>`; stahování
+   z webu jen přes `stahniVerejne()`; vlastníka záznamu poznáš podle id přístupu, ne podle přezdívky;
+   údaje „kdo jsem / kam patřím“ (role, jednotka ze skautISu) si server ověří sám. Viz `reference/bezpecnost.md`.
+7. **Mobil na prvním místě.** Každou obrazovku ověř na šířce 375 px (iPhone) i v tmavém režimu.
+8. **Malá data.** Žádné obrázky v seznamech, které se stahují pořád dokola; velké seznamy načítej
    až když jsou potřeba (sbalené sekce) a sdílej jeden požadavek mezi komponentami.
-8. **Čeština.** UI, hlášky, komentáře v kódu i commity česky. Chybové hlášky pro uživatele musí
+9. **Čeština.** UI, hlášky, komentáře v kódu i commity česky. Chybové hlášky pro uživatele musí
    říct, co se stalo a co má udělat (`throw new Chyba('kod', 'Česká věta.')`).
-9. **Tajemství nikdy do gitu.** `api/config.php`, hesla, FTP údaje, tokeny – nikdy. FTP údaje patří
+10. **Tajemství nikdy do gitu.** `api/config.php`, hesla, FTP údaje, tokeny – nikdy. FTP údaje patří
    do GitHub Secrets. Před commitem zkontroluj `git status` a necommituj soubory, které jsi nevytvořil.
-10. **Hotovo = ověřeno.** Po změně: `npm run typecheck`, `npm test` (s PHP) a `npm run e2e` (Playwright).
+11. **Hotovo = ověřeno.** Po změně: `npm run typecheck`, `npm test` (s PHP) a `npm run e2e` (Playwright).
     Nová funkce = test API **i** test v prohlížeči (`e2e/`). U viditelné změny se podívej i očima
     (`npm run api` + `npm run dev`) a uživateli řekni, co jsi ověřil a co ne.
 
@@ -78,7 +81,8 @@ Podrobné recepty s ukázkami kódu: **`reference/postupy.md`**. Stručně:
   workflow „Kontrola“ spustí testy (včetně Playwright) u každé změny. Když testy selžou, nenasadí se nic;
   zpráva s fotkami a záznamem (`playwright-report`) je v Actions u běhu jako artefakt.
 - První nasazení (subdoména, databáze, `config.php`, GitHub Secrets, `install.php`): `reference/infrastruktura.md`.
-- **`install.php` otevírej v anonymním okně** (service worker aplikace by ho v běžném okně mohl zakrýt).
+- **`install.php` otevírej v anonymním okně** (service worker aplikace by ho v běžném okně mohl zakrýt);
+  `install_key` se zadává do formuláře, nikdy do adresy.
 - Verze se počítá sama (`major.minor.počet commitů`) a je vidět v Profilu i s datem sestavení.
   Telefony si novou verzi stáhnou samy při návratu do aplikace.
 - Zálohy dat: export databáze v phpMyAdminu (`mysql.skauting.cz`), před každou větší změnou.
@@ -95,6 +99,10 @@ Podrobné recepty s ukázkami kódu: **`reference/postupy.md`**. Stručně:
 - Prvky, které se objeví jen v jednom pohledu, nesmí posouvat ovládací prvky (přepínače
   na stejném místě ve všech pohledech).
 - Nekombinuj zdroje pravdy: co se zobrazuje podle role, musí sedět s tím, co server dovolí.
+- Bezpečnostní revize Schůzkovače (10/2026) našla: `javascript:` odkazy v uložených datech, náhled odkazu,
+  který šel zneužít na vnitřní síť serveru, vlastnictví komentáře podle přezdívky, klíč `install.php`
+  v adrese a skautIS jednotku převzatou z POSTu bez ověření. Pravidla proti nim jsou v `reference/bezpecnost.md`
+  – drž se jich i u nových funkcí.
 
 ## Kdy se zeptat uživatele
 

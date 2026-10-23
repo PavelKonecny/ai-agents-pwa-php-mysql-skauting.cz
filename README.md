@@ -32,8 +32,8 @@ pravidla a postupy ze souboru [AGENTS.md](AGENTS.md) a skillu
    („Aplikace na přihlašování na oddílové akce. Vedoucí zakládá akce, členové se přihlašují…“).
    Agent upraví schéma, akce API, obrazovky a testy podle pravidel ze skillu.
 4. **Nasazení:** změny se přes pull request sloučí do `main` → GitHub Actions je otestuje a nahraje
-   na hosting. Poprvé otevři v anonymním okně `https://<aplikace>/api/install.php?key=<install_key>`
-   a získáš pozvánku správce.
+   na hosting. Poprvé otevři v anonymním okně `https://<aplikace>/api/install.php`, zadej `install_key`
+   z `config.php` a získáš pozvánku správce.
 
 ## Pro vývojáře
 

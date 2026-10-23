@@ -40,5 +40,9 @@ kteří účet mají: po propojení se mohou přihlásit na novém zařízení b
 ## Co nedělat
 
 - Neukládej skautIS token (`ID_Login`) – po ověření ho zahoď; aplikace používá jen vlastní tokeny.
+- **Nevěř polím `skautIS_IDRole` a `skautIS_IDUnit` z POSTu.** Návratový formulář odesílá prohlížeč uživatele,
+  takže je může libovolně přepsat (např. na jednotku cizího střediska). Jednotku, roli i funkce zjišťuj jen
+  voláním webové služby s ověřeným tokenem (role a funkce osoby), nikdy z těla požadavku. Ve Schůzkovači
+  to umožnilo komukoli se skautIS účtem stát se správcem cizího střediska.
 - Nepřebírej ze skautISu víc údajů, než je potřeba (stačí `ID_Person` pro propojení).
 - Role v aplikaci řídí správce aplikace, ne role ve skautISu (pokud to projekt výslovně nevyžaduje).

@@ -27,6 +27,7 @@ writeFileSync(cfg, `<?php return [
     'install_key' => 'e2e-instalace',
     'app_url' => 'http://127.0.0.1:${port}/',
     'debug' => true,
+    'limity' => ['ip' => 100000, 'token' => 100000, 'anonymni' => 100000, 'drahe' => 100000],
 ];\n`);
 
 const srv = spawn(PHP, ['-S', `127.0.0.1:${port}`, '-t', dist], { env: { ...process.env, APP_CONFIG: cfg }, stdio: 'inherit' });

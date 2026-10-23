@@ -23,6 +23,8 @@ export const TABULKY = {
   Pristupy: ['tokenHash', 'role', 'prezdivka', 'popis', 'vytvoreno', 'zruseno', 'posledniPouziti', 'skautisOsoba'],
   /** Jednorázové kódy po přihlášení přes skautIS (platí 5 minut). */
   SkautisKody: ['kodHash', 'osoba', 'jmeno', 'plati'],
+  /** Počítadla limitu požadavků (api/lib/limity.php): klicHash = sha256 klíče (otisk IP / tokenu), okno = minuta RRRR-MM-DDTHH:MM. */
+  Pocitadla: ['klicHash', 'okno', 'pocet'],
   /** UKÁZKA – nahraď vlastními tabulkami aplikace. */
   Polozky: ['nazev', 'poznamka', 'hotovo'],
 } as const;

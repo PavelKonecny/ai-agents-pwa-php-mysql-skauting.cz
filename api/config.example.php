@@ -22,6 +22,12 @@ return [
     // z hlavičky Host požadavku. Adresy pro uživatele (pozvánky, přesměrování) nikdy nestav z hlavičky Host.
     'app_url' => '',
 
+    // Limit požadavků za minutu (api/lib/limity.php): ip = vše z jedné IP, token = jeden přístup,
+    // anonymni = bez přihlášení z jedné IP, drahe = náročné akce jednoho přístupu (DRAHE_AKCE).
+    // Za reverzní proxy musí Apache doplnit skutečnou IP klienta do REMOTE_ADDR (mod_remoteip:
+    // RemoteIPHeader X-Forwarded-For + RemoteIPTrustedProxy <adresa proxy>), jinak by všichni sdíleli IP proxy.
+    // 'limity' => ['ip' => 600, 'token' => 300, 'anonymni' => 40, 'drahe' => 30],
+
     // Podrobné chybové hlášky v odpovědích – jen pro ladění, v provozu false.
     'debug' => false,
 ];

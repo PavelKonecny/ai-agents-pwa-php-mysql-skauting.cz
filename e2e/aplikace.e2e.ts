@@ -85,3 +85,16 @@ test('profil: přezdívka a tmavý režim se uloží', async ({ page }) => {
   await expect(page.getByText(/verze \d+\.\d+\.\d+/)).toBeVisible();
   await bezVodorovnehoPosunu(page);
 });
+
+test('cizí pozvánka v přihlášeném prohlížeči: nejdřív dotaz, bez potvrzení zůstane původní účet', async ({ page }) => {
+  await page.goto('/');
+  const cizi = await pozvat(page, 'Cizí host');
+  await prihlasit(page);
+  await page.goto(`/#/pozvanka?t=${cizi}`);
+  await expect(page.getByRole('heading', { name: 'Otevřít jinou pozvánku?' })).toBeVisible();
+  await page.getByRole('button', { name: 'Zůstat přihlášený' }).click();
+  await expect(page.locator('.topbar')).not.toContainText('Cizí host');
+  await page.goto(`/#/pozvanka?t=${cizi}`);
+  await page.getByRole('button', { name: 'Přepnout na pozvánku' }).click();
+  await expect(page.locator('.topbar')).toContainText('Cizí host');
+});

@@ -6,6 +6,8 @@ import type { Role } from '../../shared/schema';
 export interface Pristup {
   id: string; role: Role; prezdivka: string; popis: string;
   vytvoreno: string; zruseno: string; posledniPouziti: string; skautis: boolean;
+  /** Jen v seznamu pro správce: neotevřená pozvánka je starší než týden a už neplatí. */
+  vyprsela?: boolean;
 }
 export interface Hello { ja: Pristup; aplikace: { nazev: string; kratce: string; popis: string }; skautis: string; serverTime: string }
 

@@ -21,6 +21,12 @@ Junák – český skaut zpracovává osobní údaje podle GDPR; aplikace nesmí
 - Zrušení přístupu = `zruseno` (účinné okamžitě). Ztracený telefon → správce zruší / vydá nový odkaz.
 - Přístup, který se **rok nepoužil, vyprší** (`NEAKTIVNI_DNI` v `api/lib/core.php`); „Nový odkaz“ ho obnoví.
   Token leží v prohlížeči (localStorage), takže jakákoli chyba typu XSS = převzetí přístupu – i proto odkazy níže.
+- **Neotevřená pozvánka platí týden** (`PLATNOST_POZVANKY_DNI`, chyba `vyprsela`); „Nový odkaz“ ji obnoví.
+  Používané přístupy nevyprší (jen ten rok nečinnosti výše).
+- Odkaz s cizí pozvánkou v přihlášeném prohlížeči se **nejdřív zeptá** (`Pozvanka` ve `Vitej.tsx`) a nový token
+  uloží až po úspěšném `hello` – jinak by kdokoli poslal odkaz a oběť by tiše pracovala pod jeho účtem.
+- Pozvánku (token) nikdy neukládej v čitelné podobě ani „pro pozdější zobrazení“ (např. u přihlášky) – když je
+  to nutné, smaž ji po prvním použití a vydej nový token.
 - Každý člověk má mít vlastní pozvánku (sdílený odkaz nejde zrušit jednomu).
 - Kdo smí vydat „Nový odkaz“, smí vystupovat jménem toho člověka. Když přidáváš role, nepovol nižší roli
   obnovovat odkazy stejné nebo vyšší role (např. správce střediska jinému správci) – to patří jen nejvyšší roli.
@@ -36,6 +42,10 @@ Junák – český skaut zpracovává osobní údaje podle GDPR; aplikace nesmí
   přezdívku si může kdokoli nastavit stejnou. Server ho doplní sám při založení a klient ho nesmí přepsat.
 - **Hodnoty „kdo jsem / kam patřím“ od klienta neber jako fakt**: role, id jednotky, id osoby, id přístupu
   v požadavku jsou jen přání. Ověř je proti vlastním datům nebo službě (skautIS) – viz `skautis.md`.
+- **Oprávnění podle příznaku, ne podle textu**: když role dává přístup k citlivým datům (zdravotník, hospodář…),
+  ukládej ji jako samostatný příznak, který přiděluje jen nadřízená role, a změnu zapiš do historie. Volný popisek
+  („funkce: Zdravotník“) si člověk umí přepsat sám.
+- Nikdo nesmí měnit **vlastní** roli ani roli vyšší/stejné role (správce aplikace mění jen správce aplikace).
 - SQL jen s parametry (`?`), nikdy nevkládej vstup do SQL řetězce. Názvy tabulek a sloupců jen ze schématu.
 - Výstup do HTML: Preact escapuje sám; `dangerouslySetInnerHTML` nepoužívej. Cizí HTML (např. z API
   jiných webů) převeď na čistý text.
@@ -55,10 +65,38 @@ Junák – český skaut zpracovává osobní údaje podle GDPR; aplikace nesmí
 - **Adresy pro uživatele nestav z hlavičky `Host`** (`$_SERVER['HTTP_HOST']`) – jde podvrhnout. Použij
   `app_url` z `config.php`, nebo relativní adresu (`Location: ../#/…`).
 
+## Zátěž a limity
+
+- API má **limit požadavků** (`api/lib/limity.php`): podle IP, podle přístupu, přísněji pro anonymní akce.
+  Náročné akce aplikace (AI, nahrávání souborů, import, odchozí volání, posílání upozornění) přidej do `DRAHE_AKCE`.
+  Nastavení v `config.php` → `limity`. Za reverzní proxy potřebuje Apache `mod_remoteip` (skutečná IP v `REMOTE_ADDR`);
+  hlavičku `X-Forwarded-For` v PHP nečti.
+- Cokoli, co uživatel může vytvářet opakovaně (záznamy, obrázky, odběry upozornění, zprávy), má **strop** na uživatele
+  a den, a smazání musí opravdu uvolnit místo (smazat obrázek, ne jen odkaz na něj).
+- Nic, co se volá při každém startu aplikace (`hello`) nebo bez přihlášení, nesmí načítat celou tabulku: použij
+  `Db::ctiSloupce` (jen potřebné sloupce, bez smazaných) nebo `Db::pocetPodle` (počty přes GROUP BY).
+- Upozornění (i push) na hromadné události slučuj – jedno na vlákno/kurz a hodinu, ne jedno na každou zprávu.
+
+## Osobní údaje – mazání a exporty
+
+- Osobní údaje, které už nejsou potřeba, maž **opravdu** (`Db::smaz`), ne jen `deleted = '1'`. Domluv dobu uchování
+  (např. 6 měsíců po skončení akce) a nabídni správci jejich smazání; dobu napiš do README.
+- Citlivé údaje (zdraví) šifruj klíčem z `config.php`, nikdy klíčem uloženým ve stejné databázi; neplatný klíč = chyba
+  hned při startu, ne tiché náhradní řešení.
+- **CSV exporty** jen přes `csvRadek()` / `csvBunka()` – text začínající `=`, `+`, `-`, `@` by Excel spustil jako vzorec.
+- Soukromé soubory (fotky z praxe, snímky obrazovky) vydávej jen přes API s kontrolou oprávnění a nedovol je vložit
+  tam, kde se zobrazují veřejně.
+- Do logu nepiš celé výjimky s argumenty (`error_log('…' . $e)`) – použij `popisVyjimky($e)`.
+
 ## Server
 
 - `api/config.php` a `api/lib/`, `api/data/` jsou zvenku zakázané (`.htaccess`) – neodstraňovat.
 - `debug` v `config.php` jen dočasně při ladění; v provozu `false` (jinak by chyby prozradily detaily).
+- `test` (posun času `_now` v testech) funguje jen pod `php -S` – v provozu ho nejde zapnout ani omylem.
+- Správce se zakládá formulářem `install.php` (jen první) nebo na serveru `php api/spravce.php [--dalsi]`.
+  Vývojové `install_key` (`lokalni-vyvoj`, `e2e-instalace`) mimo `php -S` neplatí.
+- Odchozí HTTP volání **nesledují přesměrování** (`follow_location => 0` / `CURLOPT_FOLLOWLOCATION => false`)
+  a kontrolují stav 2xx; adresa od uživatele jen přes `stahniVerejne()`.
 - HTTPS vždy (přesměrování v kořenovém `.htaccess`).
 - Kořenový `.htaccess` (`scripts/htaccess-root`) posílá **Content-Security-Policy** (skripty jen z vlastního
   webu), `X-Frame-Options: DENY` a HSTS – neodstraňovat. Nepřidávej inline `<script>`, `eval`, skripty z CDN.
@@ -75,3 +113,7 @@ Junák – český skaut zpracovává osobní údaje podle GDPR; aplikace nesmí
 - [ ] `git status` neobsahuje `config.php`, hesla ani cizí soubory.
 - [ ] `https://…/api/config.php` vrací 403.
 - [ ] Odpovědi API neposílají víc dat, než obrazovka potřebuje (otisky tokenů, cizí přístupy…).
+- [ ] Opakovatelné vytváření (záznamy, obrázky, zprávy) má strop na uživatele; drahé akce jsou v `DRAHE_AKCE`.
+- [ ] `hello` a veřejné akce nečtou celé tabulky; CSV exporty přes `csvRadek()`.
+- [ ] Oprávnění k citlivým datům je příznak přidělovaný nadřízenou rolí, ne volný text; nikdo nemění svou roli.
+- [ ] Osobní údaje mají dobu uchování a skutečné smazání; testy API projdou i nad MariaDB (`npm run test:mysql`).

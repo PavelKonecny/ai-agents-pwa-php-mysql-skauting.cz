@@ -26,7 +26,8 @@ export async function nactiHello() {
     hello.value = await api<Hello>('hello');
   } catch (e) {
     const err = e as { kod?: string; message: string };
-    if (err.kod === 'unauthorized') { ulozToken(''); hello.value = null; }
+    // neplatný, zrušený nebo vypršelý přístup: odhlásit (hláška vysvětlí proč)
+    if (err.kod === 'unauthorized' || err.kod === 'vyprsela') { ulozToken(''); hello.value = null; }
     ukaz(err.message, true);
   }
 }

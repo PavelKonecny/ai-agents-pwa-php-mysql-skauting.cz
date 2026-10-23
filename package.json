@@ -8,6 +8,7 @@
     "build": "tsc --noEmit && node scripts/build-php.mjs && vite build",
     "preview": "vite preview --host",
     "test": "node scripts/build-php.mjs && vitest run",
+    "test:mysql": "node scripts/test-mysql.mjs",
     "typecheck": "tsc --noEmit",
     "api": "node scripts/dev-api.mjs",
     "dist": "npm run build && node scripts/build-php.mjs --dist",

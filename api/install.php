@@ -27,8 +27,9 @@ $config = require $configFile;
 
 $klic = (string) ($config['install_key'] ?? '');
 if ($klic === '' || str_starts_with($klic, 'ZMEN-MNE')) $stranka('Nastav klíč', '<p class="err">V config.php nastav vlastní <b>install_key</b>.</p>');
+// vývojové klíče jsou veřejně v repozitáři (scripts/dev-api.mjs, e2e-server.mjs) – mimo lokální php -S neplatí
+if (in_array($klic, ['lokalni-vyvoj', 'e2e-instalace'], true) && PHP_SAPI !== 'cli-server') $stranka('Nastav klíč', '<p class="err">Vývojový <b>install_key</b> na serveru neplatí. Nastav vlastní dlouhý náhodný klíč.</p>');
 $formular = '<form method="post"><p><label>Instalační klíč (<b>install_key</b> z config.php)<br><input type="password" name="key" required autofocus style="width:100%;padding:.5rem;font:inherit"></label></p>'
-    . '<p><label><input type="checkbox" name="dalsi" value="1"> vytvořit dalšího správce (např. při ztrátě pozvánky)</label></p>'
     . '<p><button type="submit" style="padding:.5rem 1rem;font:inherit">Pokračovat</button></p></form>';
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
     $varovani = isset($_GET['key']) ? '<p class="err">Klíč se nezadává do adresy – zadej ho do formuláře (a v config.php ho raději změň, adresa s ním může zůstat v historii prohlížeče).</p>' : '';
@@ -53,12 +54,13 @@ $koren = (string) ($config['app_url'] ?? '') ?: ($https ? 'https' : 'http') . ':
 $obsah = '<p class="ok">Databáze je připravená.</p>';
 if ($log) $obsah .= '<ul><li>' . implode('</li><li>', array_map($esc, $log)) . '</li></ul>';
 try {
-    $token = zalozSpravce($app, ($_POST['dalsi'] ?? '') === '1');
+    // dalšího správce jmenuje správce v aplikaci (Lidé → role) nebo příkaz php api/spravce.php --dalsi – přes web ne
+    $token = zalozSpravce($app);
     $odkaz = $koren . '#/pozvanka?t=' . $token;
     $obsah .= '<h2>Pozvánka správce</h2><p>Otevři tento odkaz v telefonu nebo prohlížeči. Je to tvůj osobní přístup – nikomu ho neposílej, zobrazí se jen teď:</p>'
         . '<a class="link" href="' . $esc($odkaz) . '">' . $esc($odkaz) . '</a>';
 } catch (Chyba $e) {
     if ($e->kod !== 'exists') throw $e;
-    $obsah .= '<p>Správce už existuje. Dalšího vytvoříš zaškrtnutím „vytvořit dalšího správce“ ve formuláři.</p>' . $formular;
+    $obsah .= '<p>Správce už existuje. Dalšího správce jmenuj v aplikaci (Lidé → role), případně na serveru příkazem <b>php api/spravce.php --dalsi</b>.</p>';
 }
 $stranka(APLIKACE['nazev'] . ' – instalace', $obsah);

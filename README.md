@@ -33,7 +33,8 @@ pravidla a postupy ze souboru [AGENTS.md](AGENTS.md) a skillu
    Agent upraví schéma, akce API, obrazovky a testy podle pravidel ze skillu.
 4. **Nasazení:** změny se přes pull request sloučí do `main` → GitHub Actions je otestuje a nahraje
    na hosting. Poprvé otevři v anonymním okně `https://<aplikace>/api/install.php`, zadej `install_key`
-   z `config.php` a získáš pozvánku správce.
+   z `config.php` a získáš pozvánku správce. (Bez webu: na serveru `php api/spravce.php`; další správce
+   `php api/spravce.php --dalsi` nebo v aplikaci Správa → role.)
 
 ## Pro vývojáře
 
@@ -42,6 +43,7 @@ npm install
 npm run api   # PHP API nad SQLite (potřebuje PHP 8.1+), vypíše pozvánku správce
 npm run dev   # http://localhost:5190
 npm test      # testy API
+npm run test:mysql   # testy API nad MariaDB (TEST_MYSQL_DSN, TEST_MYSQL_USER, TEST_MYSQL_PASSWORD – viz scripts/test-mysql.mjs)
 npx playwright install chromium   # jednou: prohlížeč pro testy
 npm run e2e   # testy v prohlížeči (Playwright)
 ```

@@ -9,6 +9,16 @@ on:
 jobs:
   kontrola:
     runs-on: ubuntu-latest
+    # MariaDB ve stejné verzi jako hosting – testy API i nad MySQL, výchozí striktní sql_mode
+    services:
+      mariadb:
+        image: mariadb:11.4
+        env:
+          MARIADB_ROOT_PASSWORD: test
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s --health-timeout=5s --health-retries=20
     steps:
       - uses: actions/checkout@v4
         with:
@@ -24,6 +34,12 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
+      - name: Testy API nad MariaDB
+        run: npm run test:mysql
+        env:
+          TEST_MYSQL_DSN: mysql:host=127.0.0.1;port=3306
+          TEST_MYSQL_USER: root
+          TEST_MYSQL_PASSWORD: test
       - run: npm run dist
       - name: Testy v prohlížeči (Playwright)
         run: |
